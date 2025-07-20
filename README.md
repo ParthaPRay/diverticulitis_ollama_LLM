@@ -22,8 +22,13 @@
 
 You need:
 - [Ollama](https://ollama.com) installed and running (`ollama serve`)
-- [Python 3.9+](https://www.python.org)
+- [Python 3.11+](https://www.python.org)
 - [NVIDIA GPU drivers & CUDA](https://docs.nvidia.com/cuda/)
+
+<img width="927" height="442" alt="image" src="https://github.com/user-attachments/assets/2cb8e2f0-c99f-47a3-9b6d-3305bd96ad21" />
+<img width="1298" height="31" alt="image" src="https://github.com/user-attachments/assets/5c9dc425-01f6-45ff-8250-a0ae26e4a6a9" />
+
+
 - Python packages:  
   ```bash
   pip install gradio ollama pillow
