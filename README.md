@@ -1,4 +1,4 @@
-# 🥗 AI-Powered Dietary Guidance for Diverticulitis (Ollama + VLM + MedGemma)
+# 🥗 AI-Powered Dietary Guidance for Diverticulitis (Ollama + VLM + MedGemma + VLM)
 
 > **AI assistant for meal analysis and dietary recommendations in Diverticulitis using local Vision-Language Model (VLM) and clinical LLMs – GPU Accelerated!**
 
