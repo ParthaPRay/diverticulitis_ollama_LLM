@@ -18,7 +18,7 @@
 
 ## 🚀 Quickstart
 
-### 1. **Install Dependencies**
+## 1. **Install Dependencies**
 
 You need:
 - [Ollama](https://ollama.com) installed and running (`ollama serve`)
@@ -27,9 +27,9 @@ You need:
 - Python packages:  
   ```bash
   pip install gradio ollama pillow
-````
+  ```
 
-### 2. **Pull Required Models**
+## 2. **Pull Required Models**
 
 Download these models for Ollama:
 
@@ -40,7 +40,7 @@ ollama pull hf.co/unsloth/medgemma-4b-it-GGUF:Q4_K_M
 
 > **Note:** Use smaller VLMs if your GPU VRAM is limited (replace `gemma3:12b` with `gemma3:4b` or similar).
 
-### 3. **Configure for GPU**
+## 3. **Configure for GPU**
 
 Ollama uses GPU by default if supported:
 
@@ -63,7 +63,7 @@ If you have multiple GPUs, restrict usage via:
 export CUDA_VISIBLE_DEVICES=0
 ```
 
-### 4. **Run the App**
+## 4. **Run the App**
 
 ```bash
 python app.py
@@ -130,8 +130,10 @@ Pull requests and suggestions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) 
 ---
 
 ## 📷 Screenshot
+<img width="1853" height="883" alt="Screenshot from 2025-07-19 20-30-33" src="https://github.com/user-attachments/assets/f9d65936-3380-4ed6-84ed-70d96410b2bc" />
+<img width="1849" height="801" alt="Screenshot from 2025-07-19 20-31-20" src="https://github.com/user-attachments/assets/c96bd188-08e7-4a89-b1ad-8c3350e2a1bf" />
 
-> *Add a screenshot of the app running with an example image and output table!*
+
 
 ---
 
