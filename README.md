@@ -86,6 +86,35 @@ The Gradio interface will open at [http://localhost:7860](http://localhost:7860)
 4. **Review and add any missed food items**
 5. **Click "Get Dietary Advice"** to see the MedGemma table and summary
 
+[Start]
+   |
+   v
+[Upload Meal Image]
+   |
+   v
+[Enter Digestive Condition]
+   |
+   v
+[Detect Edible Items (VLM Inference)]
+   |
+   v
+[VLM Raw Output]
+   |
+   v
+[User Reviews/Corrects Item List]
+   |
+   v
+[Final Food/Drink List]
+   |
+   v
+[Get Dietary Advice (MedGemma Inference)]
+   |
+   v
+[Show Dietary Guidance Output]
+   |
+   v
+[End]
+
 ---
 
 ## ⚡️ GPU & Performance Notes
