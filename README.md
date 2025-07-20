@@ -116,7 +116,34 @@ The Gradio interface will open at [http://localhost:7860](http://localhost:7860)
 
 ## 📝 License
 
-[MIT License](LICENSE)
+Copyright (c) 2024 Partha Pratim Ray (parthapratimray1986@gmail.com)
+
+Non-Commercial License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, and share the Software for **personal, academic, or research purposes only**,
+subject to the following conditions:
+
+1. **Non-Commercial Use Only**:  
+   Commercial use, including but not limited to selling, sublicensing, or use in a paid service or product, is strictly prohibited without prior written permission from the copyright holder (Partha Pratim Ray, parthapratimray1986@gmail.com).
+
+2. **Attribution**:  
+   You must give appropriate credit to the author (Partha Pratim Ray).
+
+3. **No Derivatives for Commercial Use**:  
+   Modifications or derivative works for commercial purposes are strictly prohibited without explicit permission.
+
+4. **Permission for Commercial Use**:  
+   If you wish to use this code, concept, or any part thereof for commercial purposes, you must obtain explicit written permission from the copyright holder (Partha Pratim Ray).  
+   Unauthorized commercial use is a violation of this license and will be considered an offense.
+
+5. **Disclaimer**:  
+   The software is provided "as is", without warranty of any kind, express or implied.
+
+For inquiries about commercial use or licensing, contact:  
+Partha Pratim Ray  
+parthapratimray1986@gmail.com
 
 ---
 
