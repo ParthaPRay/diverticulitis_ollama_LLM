@@ -1,3 +1,22 @@
+# =============================================================================
+# Title:    AI-powered Dietary Guidance for Diverticulitis Disease (Ollama + Gradio)
+# Author:   Partha Pratim Ray
+# Email:    parthapratimray1986@gmail.com
+# Copyright (c) 2024 Partha Pratim Ray
+#
+# License Notice:
+#   - This code and concept are provided strictly for non-commercial use only.
+#   - Commercial use of any kind (including resale, SaaS, for-profit services, or incorporation in a commercial product)
+#     requires prior written permission from the author (Partha Pratim Ray).
+#   - Unauthorized commercial use is a violation of the license and is considered an offense.
+#
+#   For permission, please contact: parthapratimray1986@gmail.com
+#
+# Disclaimer:
+#   - This software is provided "as is", without warranty of any kind.
+# =============================================================================
+
+
 import gradio as gr
 from ollama import Client
 from PIL import Image
