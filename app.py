@@ -16,19 +16,21 @@
 #   - This software is provided "as is", without warranty of any kind.
 # =============================================================================
 
-
 import gradio as gr
-from ollama import Client
+import requests
+import base64
 from PIL import Image
 from io import BytesIO
 import traceback
 import time
+import csv
+import os
+from datetime import datetime
 
-OLLAMA_HOST = "http://localhost:11434"
+# --- Configurable model names ---
 VLM_MODEL = "gemma3:12b"
 MED_MODEL = "hf.co/unsloth/medgemma-4b-it-GGUF:Q4_K_M"
-
-OLLAMA_CLIENT = Client(host=OLLAMA_HOST)
+OLLAMA_HOST = "http://localhost:11434"
 
 VLM_PROMPT = (
     "Carefully and comprehensively analyze the given image. "
@@ -42,6 +44,68 @@ VLM_PROMPT = (
     "2. <item> - <confidence score>\n"
 )
 
+def image_to_base64_jpeg(image):
+    buf = BytesIO()
+    image.save(buf, format="JPEG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+def extract_ollama_metrics(response, is_chat=False):
+    # Extract Ollama API metrics for /api/generate or /api/chat
+    # is_chat: if using chat API, values are at root, 'response' text is in message['content']
+    if is_chat:
+        total_duration = response.get('total_duration')
+        load_duration = response.get('load_duration')
+        prompt_eval_count = response.get('prompt_eval_count')
+        prompt_eval_duration = response.get('prompt_eval_duration')
+        eval_count = response.get('eval_count')
+        eval_duration = response.get('eval_duration')
+        tokens_per_second = (eval_count / (eval_duration / 1e9)) if eval_count and eval_duration else None
+        response_text = (response.get("message") or {}).get("content", None)
+    else:
+        total_duration = response.get('total_duration')
+        load_duration = response.get('load_duration')
+        prompt_eval_count = response.get('prompt_eval_count')
+        prompt_eval_duration = response.get('prompt_eval_duration')
+        eval_count = response.get('eval_count')
+        eval_duration = response.get('eval_duration')
+        tokens_per_second = (eval_count / (eval_duration / 1e9)) if eval_count and eval_duration else None
+        response_text = response.get('response', None)
+    return [
+        total_duration, load_duration, prompt_eval_count, prompt_eval_duration,
+        eval_count, eval_duration, tokens_per_second, response_text
+    ]
+
+def log_metrics_csv(
+    vlm_model, med_model, user_condition, image_path,
+    vlm_metrics, med_metrics
+):
+    # Define all column names, including responses at end
+    fieldnames = [
+        "timestamp", "vlm_model", "med_model", "user_condition", "image_path",
+        "vlm_total_duration", "vlm_load_duration", "vlm_prompt_eval_count", "vlm_prompt_eval_duration",
+        "vlm_eval_count", "vlm_eval_duration", "vlm_tokens_per_second", "vlm_response_text",
+        "med_total_duration", "med_load_duration", "med_prompt_eval_count", "med_prompt_eval_duration",
+        "med_eval_count", "med_eval_duration", "med_tokens_per_second", "med_response_text"
+    ]
+    row = {
+        "timestamp": datetime.now().isoformat(),
+        "vlm_model": vlm_model,
+        "med_model": med_model,
+        "user_condition": user_condition,
+        "image_path": image_path,
+    }
+    for i, m in enumerate(vlm_metrics):
+        row[fieldnames[5+i]] = m
+    for i, m in enumerate(med_metrics):
+        row[fieldnames[13+i]] = m
+    csv_file = os.path.join(os.path.dirname(__file__), "dietary_guidance_metrics.csv")
+    file_exists = os.path.isfile(csv_file)
+    with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
 def parse_vlm_output(vlm_result):
     edible_items = []
     try:
@@ -54,76 +118,55 @@ def parse_vlm_output(vlm_result):
         traceback.print_exc()
     return edible_items
 
-def vlm_inference_ollama(image, prompt):
+def vlm_inference_ollama(image, prompt, image_path="", user_condition=""):
+    metrics_out = [None] * 8
     try:
-        # Load VLM model
         print("Loading VLM...")
-        OLLAMA_CLIENT.generate(model=VLM_MODEL, prompt="", stream=False, keep_alive="60s")
-        t0 = time.time()
-        # In-memory JPEG encoding
-        buf = BytesIO()
-        image.save(buf, format="JPEG")
-        img_bytes = buf.getvalue()
-        print("  [TIMER] Image encode:", time.time()-t0, "sec")
-        t1 = time.time()
-        response = OLLAMA_CLIENT.generate(
-            model=VLM_MODEL,
-            prompt=prompt,
-            images=[img_bytes],
-            stream=False,
-            keep_alive="60s"
-        )
-        print("  [TIMER] VLM inference:", time.time()-t1, "sec")
-        print("  [TIMER] VLM TOTAL:", time.time()-t0, "sec")
-        result = response.get('response', '').strip()
-        # Unload VLM model
-        OLLAMA_CLIENT.generate(model=VLM_MODEL, prompt="", stream=False, keep_alive=0)
-        print("Unloaded VLM.")
-        return result
+        img_base64 = [image_to_base64_jpeg(image)]
+        data = {
+            "model": VLM_MODEL,
+            "prompt": prompt,
+            "images": img_base64,
+            "stream": False,
+            "keep_alive": "60s"
+        }
+        response = requests.post(f"{OLLAMA_HOST}/api/generate", json=data).json()
+        metrics_out = extract_ollama_metrics(response, is_chat=False)
+        result = metrics_out[-1] or ""
+        print("  [TIMER] VLM inference complete.")
+        return result, metrics_out
     except Exception as e:
         print("[ERROR] VLM inference failed:", e)
         traceback.print_exc()
-        return ""
+        return "", metrics_out
 
 def medgemma_inference_ollama(messages):
+    metrics_out = [None] * 8
     try:
-        # Load MedGemma model
         print("Loading MedGemma...")
-        OLLAMA_CLIENT.generate(model=MED_MODEL, prompt="", stream=False)
-        t0 = time.time()
-        # Build chat prompt for MedGemma
-        chat_prompt = ""
-        for msg in messages:
-            if msg['role'] == 'system':
-                chat_prompt += f"(System) {msg['content']}\n"
-            elif msg['role'] == 'user':
-                chat_prompt += f"User: {msg['content']}\n"
-            elif msg['role'] == 'assistant':
-                chat_prompt += f"MedGemma: {msg['content']}\n"
-        response = OLLAMA_CLIENT.generate(
-            model=MED_MODEL,
-            prompt=chat_prompt,
-            stream=False,
-            keep_alive="120s"
-        )
-        print("  [TIMER] MedGemma inference:", time.time()-t0, "sec")
-        result = response.get('response', '').strip()
-        # Unload MedGemma model
-        OLLAMA_CLIENT.generate(model=MED_MODEL, prompt="", stream=False, keep_alive=0)
-        print("Unloaded MedGemma.")
-        return result
+        data = {
+            "model": MED_MODEL,
+            "messages": messages,
+            "stream": False,
+            "keep_alive": "120s"
+        }
+        response = requests.post(f"{OLLAMA_HOST}/api/chat", json=data).json()
+        metrics_out = extract_ollama_metrics(response, is_chat=True)
+        result = metrics_out[-1] or ""
+        print("  [TIMER] MedGemma inference complete.")
+        return result, metrics_out
     except Exception as e:
         print("[ERROR] Medical LLM inference failed:", e)
         traceback.print_exc()
-        return ""
+        return "", metrics_out
 
-def detect_items(image, user_condition):
+def detect_items(image, user_condition, image_path=""):
     if image is None or user_condition.strip() == "":
-        return "", "", [], gr.update(visible=False)
-    vlm_raw = vlm_inference_ollama(image, VLM_PROMPT)
+        return "", "", [], gr.update(visible=False), [None]*8, image_path
+    vlm_raw, vlm_metrics = vlm_inference_ollama(image, VLM_PROMPT, image_path=image_path, user_condition=user_condition)
     edible_items = parse_vlm_output(vlm_raw)
     detected = ", ".join(edible_items)
-    return vlm_raw, detected, edible_items, gr.update(visible=True)
+    return vlm_raw, detected, edible_items, gr.update(visible=True), vlm_metrics, image_path
 
 def correct_items(edible_items, user_add):
     user_add = user_add.strip()
@@ -135,7 +178,7 @@ def correct_items(edible_items, user_add):
     final_list = ", ".join(edible_items)
     return edible_items, final_list
 
-def medgemma_guidance(user_condition, edible_items):
+def medgemma_guidance(user_condition, edible_items, image_path="", vlm_metrics=None):
     system_msg = {
         "role": "system",
         "content": (
@@ -170,12 +213,20 @@ def medgemma_guidance(user_condition, edible_items):
         f"{', '.join(edible_items)}."
     )
     context_memory = [system_msg, {"role": "user", "content": med_prompt}]
-    medgemma_result = medgemma_inference_ollama(context_memory)
+    medgemma_result, med_metrics = medgemma_inference_ollama(context_memory)
     chat_history = [
         {"role": "user", "content": med_prompt},
         {"role": "assistant", "content": medgemma_result}
     ]
+    if vlm_metrics is None:
+        vlm_metrics = [None] * 8
+    log_metrics_csv(
+        VLM_MODEL, MED_MODEL, user_condition, image_path or "N/A",
+        vlm_metrics, med_metrics
+    )
     return medgemma_result, context_memory, chat_history
+
+# ---- Gradio interface, now passing metrics and image path via states ----
 
 with gr.Blocks() as demo:
     gr.Markdown("# 🥗 AI-powered Dietary Guidance for Diverticulitis Disease\nUpload a meal image and describe your current digestive condition (e.g., 'History of diverticulitis with stricture'). Review and correct detected foods, get safe/unsafe/caution advice, and chat with MedGemma!")
@@ -196,14 +247,19 @@ with gr.Blocks() as demo:
     medgemma_output = gr.Textbox(label="MedGemma Dietary Guidance", lines=12, interactive=False)
     context_memory_state = gr.State([])
     chat_history_state = gr.State([])
+    vlm_metrics_state = gr.State([None]*8)
+    image_path_state = gr.State("N/A")
 
     def on_detect(image, user_condition):
-        return detect_items(image, user_condition) + ("", "", [], [], [])
+        # If image is uploaded via file, it may have .name, else use 'N/A'
+        image_path = getattr(image, 'name', 'N/A') if image is not None and hasattr(image, "name") else 'N/A'
+        vlm_raw, detected, edible_items, review_row_out, vlm_metrics, img_path = detect_items(image, user_condition, image_path=image_path)
+        return vlm_raw, detected, edible_items, review_row_out, "", "", "", [], [], vlm_metrics, img_path
 
     detect_btn.click(
         on_detect,
         inputs=[image, user_condition],
-        outputs=[vlm_raw, detected, edible_items_state, review_row, user_add, final_detected, medgemma_output, context_memory_state, chat_history_state],
+        outputs=[vlm_raw, detected, edible_items_state, review_row, user_add, final_detected, medgemma_output, context_memory_state, chat_history_state, vlm_metrics_state, image_path_state],
     )
 
     def on_correct(edible_items, user_add):
@@ -215,12 +271,12 @@ with gr.Blocks() as demo:
         outputs=[edible_items_state, final_detected]
     )
 
-    def on_submit(user_condition, edible_items):
-        return medgemma_guidance(user_condition, edible_items)
+    def on_submit(user_condition, edible_items, vlm_metrics, image_path):
+        return medgemma_guidance(user_condition, edible_items, image_path=image_path, vlm_metrics=vlm_metrics)
 
     submit_btn.click(
         on_submit,
-        inputs=[user_condition, edible_items_state],
+        inputs=[user_condition, edible_items_state, vlm_metrics_state, image_path_state],
         outputs=[medgemma_output, context_memory_state, chat_history_state]
     )
 
